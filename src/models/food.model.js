@@ -1,56 +1,27 @@
-const foods = [
-  {
-    id: 'food-123',
-    name: 'Avena',
-    category: 'Cereales',
-    serving_size_g: 50,
-    calories: 190,
-    protein_g: 6,
-    carbs_g: 32,
-    fat_g: 4,
-    fiber_g: 5,
-    description_myth: 'La avena no engorda si se consume en porciones controladas.',
-  },
-  {
-    id: 'food-456',
-    name: 'Pollo a la plancha',
-    category: 'Proteínas',
-    serving_size_g: 100,
-    calories: 165,
-    protein_g: 31,
-    carbs_g: 0,
-    fat_g: 4,
-    fiber_g: 0,
-    description_myth: 'El pollo blanco es siempre la mejor opción para bajar de peso.',
-  },
-  {
-    id: 'food-789',
-    name: 'Brócoli',
-    category: 'Verduras',
-    serving_size_g: 100,
-    calories: 34,
-    protein_g: 3,
-    carbs_g: 7,
-    fat_g: 0.4,
-    fiber_g: 2.6,
-    description_myth: 'El brócoli quema grasa por sí mismo.',
-  },
-];
-
-const generateFoodId = () => `food-${Date.now()}`;
+import { supabase } from '../supabase.js';
 
 export const FoodModel = {
   findAll: async () => {
-    return [...foods];
+    const { data, error } = await supabase.from('foods').select('*');
+    if (error) {
+      console.error('Error fetching foods from Supabase:', error);
+      return [];
+    }
+    return data;
   },
 
   findById: async (id) => {
-    return foods.find((food) => food.id === id) || null;
+    const { data, error } = await supabase.from('foods').select('*').eq('id', id).maybeSingle();
+    if (error) {
+      console.error('Error fetching food by ID from Supabase:', error);
+      return null;
+    }
+    return data;
   },
 
   create: async (data) => {
     const newFood = {
-      id: generateFoodId(),
+      id: data.id || `food-${Date.now()}`,
       name: data.name || '',
       category: data.category || '',
       serving_size_g: data.serving_size_g || 0,
@@ -62,37 +33,51 @@ export const FoodModel = {
       description_myth: data.description_myth || '',
     };
 
-    foods.push(newFood);
-    return newFood;
+    const { data: inserted, error } = await supabase
+      .from('foods')
+      .insert([newFood])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating food in Supabase:', error);
+      throw error;
+    }
+    return inserted;
   },
 
   update: async (id, data) => {
-    const index = foods.findIndex((food) => food.id === id);
-    if (index === -1) return null;
+    const updates = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.category !== undefined) updates.category = data.category;
+    if (data.serving_size_g !== undefined) updates.serving_size_g = data.serving_size_g;
+    if (data.calories !== undefined) updates.calories = data.calories;
+    if (data.protein_g !== undefined) updates.protein_g = data.protein_g;
+    if (data.carbs_g !== undefined) updates.carbs_g = data.carbs_g;
+    if (data.fat_g !== undefined) updates.fat_g = data.fat_g;
+    if (data.fiber_g !== undefined) updates.fiber_g = data.fiber_g;
+    if (data.description_myth !== undefined) updates.description_myth = data.description_myth;
 
-    const existing = foods[index];
-    const updatedFood = {
-      ...existing,
-      name: data.name ?? existing.name,
-      category: data.category ?? existing.category,
-      serving_size_g: data.serving_size_g ?? existing.serving_size_g,
-      calories: data.calories ?? existing.calories,
-      protein_g: data.protein_g ?? existing.protein_g,
-      carbs_g: data.carbs_g ?? existing.carbs_g,
-      fat_g: data.fat_g ?? existing.fat_g,
-      fiber_g: data.fiber_g ?? existing.fiber_g,
-      description_myth: data.description_myth ?? existing.description_myth,
-    };
+    const { data: updated, error } = await supabase
+      .from('foods')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .maybeSingle();
 
-    foods[index] = updatedFood;
-    return updatedFood;
+    if (error) {
+      console.error('Error updating food in Supabase:', error);
+      throw error;
+    }
+    return updated;
   },
 
   remove: async (id) => {
-    const index = foods.findIndex((food) => food.id === id);
-    if (index === -1) return false;
-
-    foods.splice(index, 1);
+    const { error } = await supabase.from('foods').delete().eq('id', id);
+    if (error) {
+      console.error('Error removing food from Supabase:', error);
+      return false;
+    }
     return true;
   },
 };

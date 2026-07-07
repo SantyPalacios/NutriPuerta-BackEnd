@@ -4,6 +4,7 @@ import profileRoutes from './profile.routes.js';
 import assessmentRoutes from './assessment.routes.js';
 import foodRoutes from './food.routes.js';
 import leadRoutes from './lead.routes.js';
+import contactRoutes from './contact.routes.js';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use(profileRoutes);
 router.use(assessmentRoutes);
 router.use(foodRoutes);
 router.use(leadRoutes);
+router.use(contactRoutes);
 
 export default router;

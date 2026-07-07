@@ -1,78 +1,36 @@
-const assessments = [
-  {
-    id: 'assessment-123',
-    user_id: 'user-123',
-    profile_snapshot: {
-      age: 28,
-      sex: 'female',
-      weight_kg: 65,
-      height_cm: 170,
-      activity_level: 'moderate',
-    },
-    imc: 22.5,
-    imc_category: 'Normal',
-    red_kcal: 2100,
-    protein_g: 100,
-    carbs_g: 250,
-    fat_g: 70,
-    created_at: '2026-06-04T10:00:00.000Z',
-  },
-  {
-    id: 'assessment-456',
-    user_id: 'user-456',
-    profile_snapshot: {
-      age: 34,
-      sex: 'male',
-      weight_kg: 78,
-      height_cm: 180,
-      activity_level: 'high',
-    },
-    imc: 24.1,
-    imc_category: 'Normal',
-    red_kcal: 2600,
-    protein_g: 140,
-    carbs_g: 280,
-    fat_g: 90,
-    created_at: '2026-06-04T11:00:00.000Z',
-  },
-  {
-    id: 'assessment-789',
-    user_id: 'user-789',
-    profile_snapshot: {
-      age: 22,
-      sex: 'female',
-      weight_kg: 55,
-      height_cm: 160,
-      activity_level: 'low',
-    },
-    imc: 21.5,
-    imc_category: 'Normal',
-    red_kcal: 1800,
-    protein_g: 70,
-    carbs_g: 210,
-    fat_g: 60,
-    created_at: '2026-06-04T12:00:00.000Z',
-  },
-];
-
-const generateAssessmentId = () => `assessment-${Date.now()}`;
+import { supabase } from '../supabase.js';
 
 export const AssessmentModel = {
   findAll: async () => {
-    return [...assessments];
+    const { data, error } = await supabase.from('assessments').select('*');
+    if (error) {
+      console.error('Error fetching assessments from Supabase:', error);
+      return [];
+    }
+    return data;
   },
 
   findById: async (id) => {
-    return assessments.find((assessment) => assessment.id === id) || null;
+    const { data, error } = await supabase.from('assessments').select('*').eq('id', id).maybeSingle();
+    if (error) {
+      console.error('Error fetching assessment by ID from Supabase:', error);
+      return null;
+    }
+    return data;
   },
 
   findByUserId: async (userId) => {
-    return assessments.find((assessment) => assessment.user_id === userId) || null;
+    const { data, error } = await supabase.from('assessments').select('*').eq('user_id', userId).maybeSingle();
+    if (error) {
+      console.error('Error fetching assessment by user ID from Supabase:', error);
+      return null;
+    }
+    return data;
   },
 
   create: async (data) => {
     const newAssessment = {
-      id: generateAssessmentId(),
+      id: data.id || `assessment-${Date.now()}`,
       user_id: data.user_id || 'user-123',
       profile_snapshot: data.profile_snapshot || {},
       imc: data.imc || 0,
@@ -84,35 +42,49 @@ export const AssessmentModel = {
       created_at: new Date().toISOString(),
     };
 
-    assessments.push(newAssessment);
-    return newAssessment;
+    const { data: inserted, error } = await supabase
+      .from('assessments')
+      .insert([newAssessment])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating assessment in Supabase:', error);
+      throw error;
+    }
+    return inserted;
   },
 
   update: async (id, data) => {
-    const index = assessments.findIndex((assessment) => assessment.id === id);
-    if (index === -1) return null;
+    const updates = {};
+    if (data.profile_snapshot !== undefined) updates.profile_snapshot = data.profile_snapshot;
+    if (data.imc !== undefined) updates.imc = data.imc;
+    if (data.imc_category !== undefined) updates.imc_category = data.imc_category;
+    if (data.red_kcal !== undefined) updates.red_kcal = data.red_kcal;
+    if (data.protein_g !== undefined) updates.protein_g = data.protein_g;
+    if (data.carbs_g !== undefined) updates.carbs_g = data.carbs_g;
+    if (data.fat_g !== undefined) updates.fat_g = data.fat_g;
 
-    const existing = assessments[index];
-    const updatedAssessment = {
-      ...existing,
-      profile_snapshot: data.profile_snapshot ?? existing.profile_snapshot,
-      imc: data.imc ?? existing.imc,
-      imc_category: data.imc_category ?? existing.imc_category,
-      red_kcal: data.red_kcal ?? existing.red_kcal,
-      protein_g: data.protein_g ?? existing.protein_g,
-      carbs_g: data.carbs_g ?? existing.carbs_g,
-      fat_g: data.fat_g ?? existing.fat_g,
-    };
+    const { data: updated, error } = await supabase
+      .from('assessments')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .maybeSingle();
 
-    assessments[index] = updatedAssessment;
-    return updatedAssessment;
+    if (error) {
+      console.error('Error updating assessment in Supabase:', error);
+      throw error;
+    }
+    return updated;
   },
 
   remove: async (id) => {
-    const index = assessments.findIndex((assessment) => assessment.id === id);
-    if (index === -1) return false;
-
-    assessments.splice(index, 1);
+    const { error } = await supabase.from('assessments').delete().eq('id', id);
+    if (error) {
+      console.error('Error removing assessment from Supabase:', error);
+      return false;
+    }
     return true;
   },
 };

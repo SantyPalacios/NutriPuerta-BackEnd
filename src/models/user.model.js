@@ -1,74 +1,72 @@
-const USER_ID = 'user-123';
-
-const users = [
-  {
-    id: USER_ID,
-    email: 'maria@example.com',
-    password_hash: '$2b$10$abc123mockhash',
-    created_at: '2026-06-01T09:15:00.000Z',
-    is_anonymous: false,
-  },
-  {
-    id: 'user-456',
-    email: 'carlos@example.com',
-    password_hash: '$2b$10$def456mockhash',
-    created_at: '2026-06-02T12:20:00.000Z',
-    is_anonymous: false,
-  },
-  {
-    id: 'user-789',
-    email: 'anon@example.com',
-    password_hash: '$2b$10$ghi789mockhash',
-    created_at: '2026-06-03T14:30:00.000Z',
-    is_anonymous: true,
-  },
-];
-
-const generateId = () => `user-${Date.now()}`;
+import { supabase } from '../supabase.js';
 
 export const UserModel = {
   findAll: async () => {
-    return [...users];
+    const { data, error } = await supabase.from('users').select('*');
+    if (error) {
+      console.error('Error fetching users from Supabase:', error);
+      return [];
+    }
+    return data;
   },
 
   findById: async (id) => {
-    return users.find((user) => user.id === id) || null;
+    const { data, error } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
+    if (error) {
+      console.error('Error fetching user by ID from Supabase:', error);
+      return null;
+    }
+    return data;
   },
 
   create: async (data) => {
     const newUser = {
-      id: generateId(),
+      id: data.id || `user-${Date.now()}`,
       email: data.email || '',
       password_hash: data.password_hash || '',
       created_at: new Date().toISOString(),
       is_anonymous: data.is_anonymous === true,
     };
 
-    users.push(newUser);
-    return newUser;
+    const { data: inserted, error } = await supabase
+      .from('users')
+      .insert([newUser])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating user in Supabase:', error);
+      throw error;
+    }
+    return inserted;
   },
 
   update: async (id, data) => {
-    const index = users.findIndex((user) => user.id === id);
-    if (index === -1) return null;
+    const updates = {};
+    if (data.email !== undefined) updates.email = data.email;
+    if (data.password_hash !== undefined) updates.password_hash = data.password_hash;
+    if (data.is_anonymous !== undefined) updates.is_anonymous = data.is_anonymous;
 
-    const existing = users[index];
-    const updatedUser = {
-      ...existing,
-      email: data.email ?? existing.email,
-      password_hash: data.password_hash ?? existing.password_hash,
-      is_anonymous: data.is_anonymous ?? existing.is_anonymous,
-    };
+    const { data: updated, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .maybeSingle();
 
-    users[index] = updatedUser;
-    return updatedUser;
+    if (error) {
+      console.error('Error updating user in Supabase:', error);
+      throw error;
+    }
+    return updated;
   },
 
   remove: async (id) => {
-    const index = users.findIndex((user) => user.id === id);
-    if (index === -1) return false;
-
-    users.splice(index, 1);
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (error) {
+      console.error('Error removing user from Supabase:', error);
+      return false;
+    }
     return true;
   },
 };
